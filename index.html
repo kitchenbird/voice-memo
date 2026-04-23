@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音声メモ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{--bg:#f6f5f0;--sf:#fff;--sa:#f0efe8;--bd:#ddd9cc;--tx:#2c2a25;--tm:#7a766a;--ac:#c05030;--as:#f4e8e4;--ah:#a8432a;--gn:#3a7d5c;--gs:#e4f0ea;--bl:#3868a0;--bs:#e4ecf4;--r:10px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;line-height:1.7}
+  .app{max-width:700px;margin:0 auto;padding:20px 16px 150px}
+  header{text-align:center;padding:16px 0;border-bottom:1px solid var(--bd);margin-bottom:18px}
+  header h1{font-size:20px;font-weight:600}
+  header p{font-size:12px;color:var(--tm);margin-top:2px}
+
+  .on-bar{display:none;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,#1a1a1a,#2a2a2a);color:#fff;border-radius:var(--r);margin-bottom:12px;font-size:12px;font-weight:500}
+  .on-bar.active{display:flex}
+  .on-dot{width:8px;height:8px;border-radius:50%;background:#ff4444;animation:pulse-dot 2s ease-in-out infinite;flex-shrink:0}
+  @keyframes pulse-dot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,68,68,.4)}50%{opacity:.7;box-shadow:0 0 0 4px rgba(255,68,68,0)}}
+  .on-bar .t{flex:1}
+  .on-bar .tm{font-family:'JetBrains Mono',monospace;font-size:11px;opacity:.7}
+
+  .status{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:14px;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--tm);flex-shrink:0;transition:background .3s}
+  .dot.on{background:var(--ac);animation:pulse-sm 1.2s ease-in-out infinite}
+  .dot.ok{background:var(--gn)}
+  @keyframes pulse-sm{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+  .stx{flex:1;color:var(--tm)}
+  .badge{background:var(--as);color:var(--ac);font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;display:none}
+  .badge.show{display:inline-block}
+
+  .live{display:none;margin-bottom:14px}
+  .live.show{display:block}
+  .live-label{font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px;letter-spacing:.05em;display:flex;align-items:center;gap:6px}
+  .live-label .blink{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ac);animation:bk 1s ease-in-out infinite}
+  @keyframes bk{0%,100%{opacity:1}50%{opacity:.2}}
+  .live-box{background:#fff8f0;border:2px solid #f0d8c0;border-radius:var(--r);padding:14px;font-size:16px;line-height:1.9;min-height:50px;white-space:pre-wrap;word-break:break-all}
+  .live-box .cur{display:inline-block;width:2px;height:1em;background:var(--ac);animation:cur .6s ease-in-out infinite;vertical-align:text-bottom;margin-left:2px}
+  @keyframes cur{0%,100%{opacity:1}50%{opacity:0}}
+
+  .segs{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .seg{position:relative;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;padding-right:36px;font-size:14px;line-height:1.8;box-shadow:0 1px 3px rgba(0,0,0,.06);animation:si .25s ease-out;cursor:text;min-height:44px;white-space:pre-wrap;word-break:break-all}
+  .seg:focus{outline:none;border-color:var(--bl);box-shadow:0 0 0 2px var(--bs)}
+  .seg .n{position:absolute;top:12px;right:10px;font-size:10px;color:var(--tm);font-family:'JetBrains Mono',monospace;opacity:.5}
+  .seg .x{position:absolute;bottom:8px;right:8px;width:22px;height:22px;border:none;background:transparent;color:var(--tm);font-size:14px;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
+  .seg:hover .x{opacity:1}
+  .seg .x:hover{background:var(--as);color:var(--ac)}
+  @keyframes si{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--tm);font-size:13px;line-height:2}
+  .empty .ic{font-size:32px;margin-bottom:8px;opacity:.4}
+
+  .result{display:none;margin-bottom:14px}
+  .result.show{display:block}
+  .result-l{font-size:12px;font-weight:600;color:var(--tm);margin-bottom:6px;letter-spacing:.05em}
+  .result-b{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px;font-size:14px;line-height:1.9;white-space:pre-wrap;word-break:break-all;box-shadow:0 1px 3px rgba(0,0,0,.06);max-height:200px;overflow-y:auto}
+
+  .sets{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+  .sets label{font-size:12px;color:var(--tm);display:flex;align-items:center;gap:6px;cursor:pointer}
+  .sets select{font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--tx)}
+
+  .bar{position:fixed;bottom:0;left:0;right:0;background:var(--sf);border-top:1px solid var(--bd);padding:12px 16px;box-shadow:0 -4px 16px rgba(0,0,0,.06);z-index:100}
+  .bar-in{max-width:700px;margin:0 auto;display:flex;gap:8px;align-items:center}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;background:var(--sf);color:var(--tx);transition:all .15s;white-space:nowrap}
+  .btn:hover{background:var(--sa)}
+  .btn:active{transform:scale(.97)}
+  .btn1{background:var(--ac);color:#fff;border-color:var(--ac);flex:1;max-width:200px}
+  .btn1:hover{background:var(--ah)}
+  .btn1.on{background:var(--tx);border-color:var(--tx)}
+  .btnc{background:var(--gn);color:#fff;border-color:var(--gn)}
+  .btnc:hover{background:#327050}
+  .btnc.ok{background:var(--gs);color:var(--gn);border-color:var(--gn)}
+  .btnd{color:var(--tm);border-color:transparent;padding:10px 12px}
+  .btnd:hover{color:var(--ac);background:var(--as)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .sp{flex:1}
+
+  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--tx);color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .3s ease;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .err{background:var(--as);border:1px solid var(--ac);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--ac);display:none;line-height:1.8}
+  .err.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🎙 音声メモ</h1>
+    <p>話した内容をリアルタイム表示 → まとめてコピー</p>
+  </header>
+  <div class="err" id="err"></div>
+  <div class="on-bar" id="onBar"><div class="on-dot"></div><span class="t">常時待機中 — いつでも話しかけてください</span><span class="tm" id="ut">00:00:00</span></div>
+
+  <div class="sets">
+    <label>区切り：<select id="sep"><option value="\n">改行</option><option value="。">。</option><option value=" ">スペース</option><option value="\n\n">空行</option></select></label>
+    <label>自動結合：<select id="mergeMode"><option value="time">2秒以内は結合</option><option value="none">結合しない</option></select></label>
+  </div>
+
+  <div class="status"><div class="dot" id="dot"></div><span class="stx" id="stx">マイクボタンで開始</span><span class="badge" id="bdg">0件</span></div>
+
+  <div class="live" id="live">
+    <div class="live-label"><span class="blink"></span> いま聴き取り中</div>
+    <div class="live-box" id="liveBox"><span class="cur"></span></div>
+  </div>
+
+  <div class="segs" id="segs">
+    <div class="empty"><div class="ic">🎤</div>「常時待機ON」で開始<br>話すとリアルタイムで文字が出ます<br>全部終わったら「コピー」→ Claudeに貼り付け</div>
+  </div>
+  <div class="result" id="res"><div class="result-l">結合プレビュー</div><div class="result-b" id="resB"></div></div>
+</div>
+
+<div class="bar"><div class="bar-in">
+  <button class="btn btn1" id="mic" onclick="toggle()">🎤 常時待機 ON</button>
+  <div class="sp"></div>
+  <button class="btn btnc" id="cpb" onclick="cpAll()" disabled>📋 コピー</button>
+  <button class="btn btnd" id="clb" onclick="clAll()" disabled>🗑</button>
+</div></div>
+<div class="toast" id="tst"></div>
+
+<script>
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let segs=[],on=false,rec=null,micStream=null,t0=null,utI=null;
+let pendingInterim='',lastSegTime=0;
+const $=id=>document.getElementById(id);
+if(!SR){$('err').textContent='⚠ Chrome / Edge で開いてください';$('err').classList.add('show');$('mic').disabled=true}
+
+// === Mic (HTTPS = permission persists) ===
+async function acquireMic(){
+  if(micStream)return true;
+  try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});return true}
+  catch(e){$('err').innerHTML='⚠ マイクの許可が必要です。アドレスバーの🔒からマイクを許可してください。';$('err').classList.add('show');return false}
+}
+function releaseMic(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}}
+
+// === Live display ===
+function updateLive(t){
+  const b=$('liveBox');
+  if(t){b.innerHTML=esc(t)+'<span class="cur"></span>';$('live').classList.add('show')}
+  else b.innerHTML='<span class="cur"></span>';
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// === Smart merge ===
+function addText(t){
+  if(!t)return;
+  const now=Date.now();
+  if($('mergeMode').value==='time'&&segs.length>0&&(now-lastSegTime)<2000){
+    segs[segs.length-1]+=t;
+  }else{
+    segs.push(t);
+  }
+  lastSegTime=now;
+  render();updRes();toast('✓ #'+segs.length);
+}
+
+// === Recognition ===
+function makeRec(){
+  if(rec)return;if(!SR)return;
+  rec=new SR();rec.lang='ja-JP';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+
+  rec.onstart=()=>{$('dot').className='dot on';$('stx').textContent='聴き取り中…';$('err').classList.remove('show');$('live').classList.add('show')};
+
+  rec.onresult=(e)=>{
+    let interim='',finalT='';
+    for(let j=e.resultIndex;j<e.results.length;j++){
+      const t=e.results[j][0].transcript;
+      if(e.results[j].isFinal)finalT+=t;else interim+=t;
+    }
+    if(finalT){addText(finalT.trim());pendingInterim='';updateLive(interim)}
+    if(interim){pendingInterim=interim;updateLive(interim)}
+  };
+
+  rec.onerror=(e)=>{
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){$('err').innerHTML='⚠ マイクの許可が必要です';$('err').classList.add('show')}
+    if(e.error==='network'){$('err').innerHTML='⚠ ネットワークエラー';$('err').classList.add('show')}
+  };
+
+  rec.onend=()=>{
+    if(pendingInterim.trim()){addText(pendingInterim.trim());pendingInterim=''}
+    updateLive('');
+    if(!on){$('live').classList.remove('show');return}
+    setTimeout(()=>{
+      if(!on)return;
+      try{rec.start()}catch(e){rec=null;makeRec();try{rec.start()}catch(e2){}}
+    },300);
+  };
+}
+
+// === Toggle ===
+async function toggle(){
+  if(on){
+    on=false;clearInterval(utI);
+    try{rec.abort()}catch(e){}rec=null;releaseMic();pendingInterim='';
+    $('mic').innerHTML='🎤 常時待機 ON';$('mic').classList.remove('on');
+    $('onBar').classList.remove('active');$('live').classList.remove('show');
+    $('dot').className=segs.length?'dot ok':'dot';
+    $('stx').textContent=segs.length?segs.length+'件のメモ':'マイクボタンで開始';
+  }else{
+    const ok=await acquireMic();if(!ok)return;
+    on=true;t0=Date.now();pendingInterim='';
+    $('mic').innerHTML='⏹ 停止';$('mic').classList.add('on');
+    $('onBar').classList.add('active');
+    clearInterval(utI);utI=setInterval(uptime,1000);uptime();
+    makeRec();try{rec.start()}catch(e){}
+  }
+}
+
+function uptime(){if(!t0)return;const s=Math.floor((Date.now()-t0)/1000);$('ut').textContent=String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+
+// === Segments ===
+function rmSeg(i){segs.splice(i,1);render();updRes()}
+function updSeg(i,t){segs[i]=t;updRes()}
+function render(){
+  const el=$('segs');el.innerHTML='';
+  if(segs.length===0){
+    el.innerHTML='<div class="empty"><div class="ic">🎤</div>「常時待機ON」で開始<br>話すとリアルタイムで文字が出ます<br>全部終わったら「コピー」→ Claudeに貼り付け</div>';
+    $('res').classList.remove('show');$('cpb').disabled=true;$('clb').disabled=true;$('bdg').classList.remove('show');return;
+  }
+  segs.forEach((t,i)=>{
+    const d=document.createElement('div');d.className='seg';d.contentEditable='true';
+    d.appendChild(document.createTextNode(t));
+    const n=document.createElement('span');n.className='n';n.textContent='#'+(i+1);d.appendChild(n);
+    const x=document.createElement('button');x.className='x';x.textContent='✕';
+    x.onclick=e=>{e.stopPropagation();rmSeg(i)};d.appendChild(x);
+    d.addEventListener('blur',()=>{
+      const c=d.cloneNode(true);c.querySelectorAll('.n,.x').forEach(s=>s.remove());
+      const cl=c.textContent.trim();if(cl!==segs[i])updSeg(i,cl);
+    });
+    el.appendChild(d);
+  });
+  $('cpb').disabled=false;$('clb').disabled=false;
+  $('bdg').textContent=segs.length+'件';$('bdg').classList.add('show');
+  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+}
+
+function getSep(){return $('sep').value.replace(/\\n/g,'\n')}
+function updRes(){if(segs.length===0){$('res').classList.remove('show');return}$('res').classList.add('show');$('resB').textContent=segs.join(getSep())}
+$('sep').addEventListener('change',updRes);
+
+function cpAll(){
+  if(!segs.length)return;const t=segs.join(getSep());
+  navigator.clipboard.writeText(t).then(()=>{
+    $('cpb').innerHTML='✅ コピー済';$('cpb').classList.add('ok');toast('📋 コピーしました');
+    setTimeout(()=>{$('cpb').innerHTML='📋 コピー';$('cpb').classList.remove('ok')},2000);
+  }).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('📋 コピーしました')});
+}
+
+function clAll(){if(segs.length&&!confirm('すべて消去しますか？'))return;segs=[];render();updRes();toast('🗑 クリアしました')}
+function toast(m){$('tst').textContent=m;$('tst').classList.add('show');setTimeout(()=>$('tst').classList.remove('show'),1800)}
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.ctrlKey){e.preventDefault();toggle()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&on){try{rec.abort()}catch(e){}}});
+</script>
+</body>
+</html>
